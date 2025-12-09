@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Quiz Competition</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const quizData = [
+      {
+        id: 1,
+        name: 'Round 1 - Easy',
+        timePerQuestion: 30,
+        questions: [
+          { id: 1, question: 'What is the capital of France?', options: ['London', 'Berlin', 'Paris', 'Madrid'], correct: 2 },
+          { id: 2, question: 'What is 2 + 2?', options: ['3', '4', '5', '6'], correct: 1 },
+          { id: 3, question: 'Which planet is known as the Red Planet?', options: ['Venus', 'Mars', 'Jupiter', 'Saturn'], correct: 1 }
+        ]
+      },
+      {
+        id: 2,
+        name: 'Round 2 - Medium',
+        timePerQuestion: 45,
+        questions: [
+          { id: 4, question: 'Who painted the Mona Lisa?', options: ['Van Gogh', 'Da Vinci', 'Picasso', 'Monet'], correct: 1 },
+          { id: 5, question: 'What is the largest planet?', options: ['Earth', 'Mars', 'Jupiter', 'Saturn'], correct: 2 }
+        ]
+      }
+    ];
+
+    function App() {
+      const [userRole, setUserRole] = useState(null);
+      const [currentUser, setCurrentUser] = useState(null);
+      const [rounds] = useState(quizData);
+      const [activeRound, setActiveRound] = useState(null);
+      const [activeQuestion, setActiveQuestion] = useState(null);
+      const [quizActive, setQuizActive] = useState(false);
+      const [participants, setParticipants] = useState({});
+      const [scores, setScores] = useState({});
+      const [tabChangeWarnings, setTabChangeWarnings] = useState({});
+
+      const appState = {
+        userRole, setUserRole, currentUser, setCurrentUser, rounds,
+        activeRound, setActiveRound, activeQuestion, setActiveQuestion,
+        quizActive, setQuizActive, participants, setParticipants,
+        scores, setScores, tabChangeWarnings, setTabChangeWarnings
+      };
+
+      if (!userRole) return <LoginScreen appState={appState} />;
+      if (userRole === 'admin') return <AdminDashboard appState={appState} />;
+      if (userRole === 'participant') return <ParticipantView appState={appState} />;
+      return null;
+    }
+
+    function LoginScreen({ appState }) {
+      const [loginData, setLoginData] = useState({ username: '', password: '' });
+      const { setUserRole, setCurrentUser, participants, setParticipants, scores, setScores, tabChangeWarnings, setTabChangeWarnings } = appState;
+
+      const handleLogin = (role) => {
+        if (role === 'admin') {
+          if (loginData.username === 'admin' && loginData.password === 'admin123') {
+            setUserRole('admin');
+            setCurrentUser('Admin');
+          } else {
+            alert('Invalid admin credentials!');
+            return;
+          }
+        } else {
+          if (loginData.username.trim()) {
+            setUserRole('participant');
+            setCurrentUser(loginData.username);
+            setParticipants({ ...participants, [loginData.username]: true });
+            setScores({ ...scores, [loginData.username]: 0 });
+            setTabChangeWarnings({ ...tabChangeWarnings, [loginData.username]: 0 });
+          } else {
+            alert('Please enter a username!');
+            return;
+          }
+        }
+        setLoginData({ username: '', password: '' });
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-yellow-500 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">
+                🏆
+              </div>
+              <h1 className="text-3xl font-bold text-gray-800">Smart Quiz Competition</h1>
+            </div>
+            <input type="text" placeholder="Username" value={loginData.username} onChange={(e) => setLoginData({ ...loginData, username: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500" />
+            <input type="password" placeholder="Password (Admin only)" value={loginData.password} onChange={(e) => setLoginData({ ...loginData, password: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500" />
+            <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => handleLogin('admin')} className="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-lg">Admin Login</button>
+              <button onClick={() => handleLogin('participant')} className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg">Participant Login</button>
+            </div>
+            <p className="text-xs text-gray-500 text-center mt-4">Admin: admin / admin123 | Participant: Any username</p>
+          </div>
+        </div>
+      );
+    }
+
+    function AdminDashboard({ appState }) {
+      const { setUserRole, participants, scores, tabChangeWarnings, rounds, activeRound, setActiveRound, activeQuestion, setActiveQuestion, quizActive, setQuizActive } = appState;
+
+      const startRound = (idx) => {
+        setActiveRound(idx);
+        setActiveQuestion(0);
+        setQuizActive(true);
+      };
+
+      const nextQuestion = () => {
+        const round = rounds[activeRound];
+        if (activeQuestion < round.questions.length - 1) {
+          setActiveQuestion(activeQuestion + 1);
+        } else {
+          alert('Round completed!');
+          setQuizActive(false);
+          setActiveQuestion(null);
+        }
+      };
+
+      const endRound = () => {
+        setQuizActive(false);
+        setActiveRound(null);
+        setActiveQuestion(null);
+      };
+
+      return (
+        <div className="min-h-screen bg-gray-100 p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+                <button onClick={() => setUserRole(null)} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">Logout</button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><span>👥</span> Active Participants</h3>
+                  <div className="space-y-2">
+                    {Object.keys(participants).length === 0 ? (
+                      <p className="text-gray-500 text-sm">No participants yet</p>
+                    ) : (
+                      Object.keys(participants).map(name => (
+                        <div key={name} className="bg-white p-2 rounded flex justify-between items-center">
+                          <span className="font-medium">{name}</span>
+                          <span className="text-sm font-semibold">Score: {scores[name] || 0}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><span>⚠️</span> Tab Change Warnings</h3>
+                  <div className="space-y-2">
+                    {Object.keys(tabChangeWarnings).length === 0 ? (
+                      <p className="text-gray-500 text-sm">No warnings yet</p>
+                    ) : (
+                      Object.entries(tabChangeWarnings).map(([name, count]) => (
+                        <div key={name} className="bg-white p-2 rounded flex justify-between items-center">
+                          <span className="font-medium">{name}</span>
+                          <span className={`font-semibold ${count > 0 ? 'text-red-600' : 'text-green-600'}`}>{count} warnings</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-lg mb-4">Quiz Control</h3>
+                {rounds.map((round, idx) => (
+                  <div key={round.id} className="bg-white p-4 rounded-lg shadow mb-4">
+                    <div className="flex justify-between items-center flex-wrap gap-3">
+                      <div>
+                        <h4 className="font-semibold text-lg">{round.name}</h4>
+                        <p className="text-sm text-gray-600">{round.questions.length} questions | {round.timePerQuestion}s each</p>
+                      </div>
+                      <div className="flex gap-2">
+                        {activeRound === idx ? (
+                          <>
+                            <button onClick={nextQuestion} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Next Question</button>
+                            <button onClick={endRound} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">End Round</button>
+                          </>
+                        ) : (
+                          <button onClick={() => startRound(idx)} disabled={quizActive} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded disabled:bg-gray-300">Start Round</button>
+                        )}
+                      </div>
+                    </div>
+                    {activeRound === idx && activeQuestion !== null && (
+                      <div className="mt-3 p-3 bg-blue-100 rounded">
+                        <p className="font-semibold">Current: Question {activeQuestion + 1} of {round.questions.length}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function ParticipantView({ appState }) {
+      const { setUserRole, currentUser, rounds, activeRound, activeQuestion, quizActive, scores, setScores, tabChangeWarnings, setTabChangeWarnings } = appState;
+      const [currentAnswer, setCurrentAnswer] = useState(null);
+      const [timeLeft, setTimeLeft] = useState(0);
+
+      useEffect(() => {
+        if (quizActive && activeRound !== null && activeQuestion !== null) {
+          setTimeLeft(rounds[activeRound].timePerQuestion);
+          setCurrentAnswer(null);
+        }
+      }, [activeQuestion, activeRound, quizActive, rounds]);
+
+      useEffect(() => {
+        if (quizActive && activeQuestion !== null && timeLeft > 0) {
+          const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+          return () => clearTimeout(timer);
+        } else if (timeLeft === 0 && activeQuestion !== null && quizActive) {
+          handleAnswerSubmit();
+        }
+      }, [timeLeft]);
+
+      useEffect(() => {
+        if (quizActive) {
+          const handleVisibilityChange = () => {
+            if (document.hidden) {
+              const newWarnings = { ...tabChangeWarnings };
+              newWarnings[currentUser] = (newWarnings[currentUser] || 0) + 1;
+              setTabChangeWarnings(newWarnings);
+              alert('Warning: Tab change detected! Admin has been notified.');
+            }
+          };
+          document.addEventListener('visibilitychange', handleVisibilityChange);
+          return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+        }
+      }, [quizActive, currentUser, tabChangeWarnings, setTabChangeWarnings]);
+
+      const handleAnswerSubmit = () => {
+        if (currentAnswer !== null && activeRound !== null && activeQuestion !== null) {
+          const round = rounds[activeRound];
+          const question = round.questions[activeQuestion];
+          if (currentAnswer === question.correct) {
+            setScores({ ...scores, [currentUser]: (scores[currentUser] || 0) + 10 });
+          }
+        }
+        setCurrentAnswer(null);
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-green-400 to-blue-500 p-6">
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-white rounded-lg shadow-2xl p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800">Welcome, {currentUser}!</h1>
+                  <p className="text-gray-600">Your Score: {scores[currentUser] || 0}</p>
+                </div>
+                <button onClick={() => setUserRole(null)} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">Logout</button>
+              </div>
+
+              {quizActive && activeRound !== null && activeQuestion !== null ? (
+                <div>
+                  <div className="bg-purple-100 p-4 rounded-lg mb-6">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-xl font-semibold">{rounds[activeRound].name}</h2>
+                      <div className="flex items-center gap-2 text-2xl font-bold text-red-600"><span>⏰</span>{timeLeft}s</div>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-6 rounded-lg mb-6">
+                    <p className="text-sm text-gray-600 mb-2">Question {activeQuestion + 1} of {rounds[activeRound].questions.length}</p>
+                    <h3 className="text-xl font-semibold mb-6">{rounds[activeRound].questions[activeQuestion].question}</h3>
+                    <div className="space-y-3">
+                      {rounds[activeRound].questions[activeQuestion].options.map((option, idx) => (
+                        <button key={idx} onClick={() => setCurrentAnswer(idx)} className={`w-full text-left p-4 rounded-lg border-2 transition-all ${currentAnswer === idx ? 'border-blue-500 bg-blue-100' : 'border-gray-300 hover:border-blue-300 bg-white'}`}>{option}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={handleAnswerSubmit} disabled={currentAnswer === null} className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-4 rounded-lg disabled:bg-gray-300">Submit Answer</button>
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
+                    <p className="text-sm text-yellow-800 flex items-center gap-2"><span>⚠️</span>Warning: Do not switch tabs! Tab changes are monitored.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">⏰</div>
+                  <p className="text-xl text-gray-600">Waiting for quiz to start...</p>
+                  <p className="text-sm text-gray-500 mt-2">The admin will start the round shortly</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
